@@ -20,14 +20,14 @@ The system tells users *why* it's concerned, not just *that* it's concerned. Dec
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, Vite, React Router, Axios |
-| Backend | Node.js, Express |
-| Database | MongoDB Atlas (cloud) + Mongoose ODM |
-| Authentication | JWT + bcrypt password hashing |
-| State management | React Context + Hooks |
-| Styling | Vanilla CSS (custom design system) |
+| Layer            | Technology                           |
+|------------------|--------------------------------------|
+| Frontend         | React 19, Vite, React Router, Axios  |
+| Backend          | Node.js, Express                     |
+| Database         | MongoDB Atlas (cloud) + Mongoose ODM |
+| Authentication   | JWT + bcrypt password hashing        |
+| State management | React Context + Hooks                |
+| Styling          | Vanilla CSS (custom design system)   |
 
 ---
 
@@ -239,18 +239,24 @@ Aggregations run database-side, returning only summarized results — far faster
 ## 🖼️ Screenshots
 
 ### Login & Registration
-![Login](screenshots/01-login.png)
-![Register](screenshots/02-register.png)
+![Login](<img width="684" height="693" alt="01-login" src="https://github.com/user-attachments/assets/8be89397-0ef5-44f5-8907-628e9f388d43" />)
+
+![Register](<img width="680" height="792" alt="02-register" src="https://github.com/user-attachments/assets/c41647a1-15a4-4336-84ed-fcb285214148" />
+)
 
 ### Dashboard
-![Empty dashboard](screenshots/03-dashboard-empty.png)
-![Active session](screenshots/04-active-session.png)
+![Empty dashboard](<img width="942" height="981" alt="03-dashboard-empty" src="https://github.com/user-attachments/assets/17291b5b-495d-4796-a5ea-fe20d2048359" />
+)
+![Active session](<img width="985" height="480" alt="04-active-session" src="https://github.com/user-attachments/assets/d43c26dc-2933-46aa-a5a5-30d532cd6bef" />
+)
 
 ### Insights & History
-![Weekly stats](screenshots/05-weekly-stats.png)
+![Weekly stats](<img width="932" height="984" alt="05-weekly-stats" src="https://github.com/user-attachments/assets/0ca7fc56-c403-4d53-8232-036cf790965c" />
+)
 
 ### API Test (Postman)
-![Weekly insights endpoint](screenshots/06-api-postman.png)
+![Weekly insights endpoint](<img width="1432" height="971" alt="06-api-postman" src="https://github.com/user-attachments/assets/4eba61fb-90f8-40a5-9e66-b1faa19bd7ec" />
+)
 
 ---
 
