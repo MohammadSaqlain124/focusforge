@@ -1,7 +1,8 @@
-// controllers/sessionController.js
+
 // Business logic for managing focus sessions.
 
 const Session = require('../models/Session');
+const { closeOverrunSessions } = require('../services/insightsEngine');
 
 // @desc    Start a new focus session
 // @route   POST /api/sessions/start
@@ -9,6 +10,9 @@ const Session = require('../models/Session');
 const startSession = async (req, res) => {
   try {
     const { goal, plannedDuration, tags } = req.body;
+
+    // Auto-close any forgotten overrun sessions before starting a new one
+    await closeOverrunSessions(req.user._id);
 
     // === Step 1: Validate input ===
     if (!goal || !plannedDuration) {
@@ -171,9 +175,10 @@ const logBreak = async (req, res) => {
 // @access  Private
 const getMySessions = async (req, res) => {
   try {
-    // === Step 1: Read query parameters with sensible defaults ===
-    // Defaults: limit=20 sessions per page, page=1 (first page)
-    // Query params arrive as strings, so we parseInt where needed
+    // Auto-close any overrun sessions so the list shows accurate state
+    await closeOverrunSessions(req.user._id);
+
+    // Query params let frontend ask for filtered/paginated data
     const { status, limit = 20, page = 1 } = req.query;
     const limitNum = parseInt(limit);
     const pageNum = parseInt(page);

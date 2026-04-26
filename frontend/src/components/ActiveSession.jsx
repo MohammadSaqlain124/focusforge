@@ -35,18 +35,40 @@ function ActiveSession({ session, onSessionEnded, onSessionUpdated }) {
     }
   };
 
+  // Compute if session is over-time (for border + banner)
+  const elapsedMin = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 60000);
+  const isOverTime = elapsedMin >= session.plannedDuration;
+
   return (
-    <div className="card" style={{ borderColor: '#7c5cff' }}>
+    <div className="card" style={{ borderColor: isOverTime ? '#ffa94d' : '#7c5cff' }}>
+      {isOverTime && (
+        <div
+          style={{
+            background: 'rgba(255, 169, 77, 0.1)',
+            border: '1px solid rgba(255, 169, 77, 0.3)',
+            borderRadius: 8,
+            padding: '0.6rem 0.9rem',
+            marginBottom: '1rem',
+            fontSize: '0.85rem',
+            color: '#ffa94d',
+          }}
+        >
+          ⏰ You've passed your planned duration. Click <strong>Complete</strong> when you're done — or it'll auto-end.
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h2 style={{ marginBottom: '0.25rem' }}>🔥 Session in progress</h2>
           <p className="text-muted">{session.goal}</p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <p className="text-muted" style={{ fontSize: '0.85rem' }}>Elapsed</p>
-          <p style={{ fontSize: '1.5rem' }}>
-            <DurationDisplay startTime={session.startedAt} />
-          </p>
+            <p className="text-muted" style={{ fontSize: '0.85rem' }}>Elapsed</p>
+            <p style={{ fontSize: '1.5rem' }}>
+            <DurationDisplay
+            startTime={session.startedAt}
+            plannedDuration={session.plannedDuration}
+            />
+            </p>
         </div>
       </div>
 

@@ -1,33 +1,25 @@
 // src/components/DurationDisplay.jsx
-// Shows elapsed time since `startTime`, ticking every second.
+// Shows elapsed time. If plannedDuration is provided and exceeded,
+// the display turns amber and shows "X min over".
 
 import { useState, useEffect } from 'react';
 
-function DurationDisplay({ startTime }) {
-  // State holds current "now" — gets updated every second
+function DurationDisplay({ startTime, plannedDuration }) {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    // Set up an interval that updates "now" every 1000ms
     const interval = setInterval(() => {
       setNow(Date.now());
     }, 1000);
-
-    // Cleanup: clear interval when component unmounts
-    // (otherwise we'd leak intervals every time this component is removed)
     return () => clearInterval(interval);
-  }, []); // empty array = setup only once on mount
+  }, []);
 
-  // Calculate elapsed milliseconds
+  // Calculate elapsed
   const start = new Date(startTime).getTime();
   const elapsedMs = now - start;
-
-  // Convert to minutes and seconds
   const totalSeconds = Math.floor(elapsedMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-
-  // Format: "12m 34s" or "1h 12m 34s"
   const hours = Math.floor(minutes / 60);
   const displayMinutes = minutes % 60;
 
@@ -38,9 +30,30 @@ function DurationDisplay({ startTime }) {
     display = `${displayMinutes}m ${seconds}s`;
   }
 
+  // Determine over-time state
+  const isOverTime = plannedDuration && minutes >= plannedDuration;
+  const minutesOver = isOverTime ? minutes - plannedDuration : 0;
+
+  // Color: amber when over, default white when on-pace
+  const color = isOverTime ? '#ffa94d' : 'inherit';
+
   return (
-    <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
-      {display}
+    <span style={{ display: 'inline-block' }}>
+      <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color }}>
+        {display}
+      </span>
+      {isOverTime && (
+        <span
+          style={{
+            marginLeft: '0.5rem',
+            fontSize: '0.7em',
+            color: '#ffa94d',
+            fontWeight: 500,
+          }}
+        >
+          ({minutesOver} min over)
+        </span>
+      )}
     </span>
   );
 }

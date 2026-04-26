@@ -1,4 +1,4 @@
-// middleware/errorHandler.js
+
 // Purpose: Centralized error handling.
 // Instead of try/catch in every route, errors bubble up here.
 

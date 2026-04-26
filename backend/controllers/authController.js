@@ -1,5 +1,5 @@
-// controllers/authController.js
-// Purpose: Handles register, login, and "get current user" logic.
+
+// purpose: Handles register, login, and "get current user" logic.
 // Controllers contain BUSINESS LOGIC. Routes just connect URLs to controllers.
 
 const User = require('../models/User');

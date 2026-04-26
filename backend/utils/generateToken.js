@@ -1,4 +1,4 @@
-// utils/generateToken.js
+
 // Purpose: Creates a JWT (JSON Web Token) for an authenticated user.
 // JWT = a signed, encoded string that proves "this user is logged in"
 // without storing sessions on the server. Stateless auth.

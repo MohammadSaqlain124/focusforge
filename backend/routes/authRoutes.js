@@ -1,4 +1,4 @@
-// routes/authRoutes.js
+
 // Purpose: Maps HTTP methods + URLs to controller functions.
 
 const express = require('express');

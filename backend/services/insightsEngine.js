@@ -1,16 +1,9 @@
-// services/insightsEngine.js
+
 // Pure business logic for calculating insights from session data.
 // No req/res here — just functions that take data in and return analysis out.
 
-/**
- * Calculate the user's current focus streak.
- * Streak = number of consecutive days (ending today or yesterday)
- *          where the user completed at least one focus session.
- *
- * @param {Array} sessions - array of completed session documents,
- *                          must include `endedAt` or `startedAt`
- * @returns {number} - the streak count
- */
+
+const Session = require('../models/Session');
 const calculateStreak = (sessions) => {
   // Edge case: no sessions = no streak
   if (!sessions || sessions.length === 0) return 0;
@@ -253,8 +246,37 @@ const buildWeeklyReport = (
   };
 };
 
+const closeOverrunSessions = async (userId) => {
+  // Step 1: Fetch all active sessions for this user
+  const activeSessions = await Session.find({
+    userId,
+    status: 'active',
+  });
+
+  let closedCount = 0;
+
+  // Step 2: For each active session, check if it has overrun
+  for (const session of activeSessions) {
+    // Compute when the session SHOULD have ended
+    const plannedEndTime = new Date(session.startedAt);
+    plannedEndTime.setMinutes(plannedEndTime.getMinutes() + session.plannedDuration);
+
+    // If the planned end time is in the past → auto-close it
+    if (plannedEndTime < new Date()) {
+      session.status = 'completed';
+      session.endedAt = plannedEndTime;
+      session.actualDuration = session.plannedDuration; // they planned it, they did (at least) it
+      await session.save();
+      closedCount++;
+    }
+  }
+
+  return closedCount;
+};
+
 module.exports = {
   calculateStreak,
   checkBurnout,
   buildWeeklyReport,
+  closeOverrunSessions,
 };

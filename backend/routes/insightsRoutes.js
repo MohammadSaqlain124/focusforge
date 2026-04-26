@@ -1,4 +1,4 @@
-// routes/insightsRoutes.js
+
 // Routes for the Intelligence Engine.
 
 const express = require('express');

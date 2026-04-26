@@ -1,4 +1,4 @@
-// controllers/insightsController.js
+
 // Thin HTTP handlers that delegate to the insights service.
 
 const Session = require('../models/Session');
@@ -7,6 +7,7 @@ const {
   calculateStreak,
   checkBurnout,
   buildWeeklyReport,
+  closeOverrunSessions,
 } = require('../services/insightsEngine');
 
 // @desc    Get the user's current focus streak (consecutive days with sessions)
@@ -14,8 +15,10 @@ const {
 // @access  Private
 const getStreak = async (req, res) => {
   try {
+    // Catch up on overrun sessions before computing
+    await closeOverrunSessions(req.user._id);
+
     // Fetch only completed sessions for this user
-    // We don't count abandoned sessions toward streaks (that would be cheating)
     const sessions = await Session.find({
       userId: req.user._id,
       status: 'completed',
@@ -47,6 +50,8 @@ const getStreak = async (req, res) => {
 // @access  Private
 const getBurnoutCheck = async (req, res) => {
   try {
+    await closeOverrunSessions(req.user._id);
+
     // Window: last 24 hours
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -79,6 +84,8 @@ const getBurnoutCheck = async (req, res) => {
 // @access  Private
 const getWeeklyInsights = async (req, res) => {
   try {
+    await closeOverrunSessions(req.user._id);
+
     // Window: last 7 days
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 

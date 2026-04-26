@@ -1,4 +1,4 @@
-// middleware/authMiddleware.js
+
 // Purpose: Protects routes. Verifies the JWT token sent by the client.
 // If valid: attaches user info to req.user and calls next().
 // If invalid: returns 401 Unauthorized.

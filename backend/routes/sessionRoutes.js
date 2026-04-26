@@ -1,7 +1,4 @@
-// routes/sessionRoutes.js
-// Maps URLs and HTTP methods to session controller functions.
 
-// routes/sessionRoutes.js
 // Maps URLs and HTTP methods to session controller functions.
 
 const express = require('express');

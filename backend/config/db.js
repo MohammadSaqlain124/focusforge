@@ -1,6 +1,4 @@
-// config/db.js
-// Purpose: Connects our Express app to MongoDB Atlas using Mongoose.
-// Why separate file: Keeps server.js clean. Single Responsibility Principle.
+// purpose: connects our Express app to MongoDB Atlas using Mongoose.
 
 const mongoose = require('mongoose');
 

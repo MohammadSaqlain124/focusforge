@@ -1,4 +1,4 @@
-// models/Session.js
+
 // Defines the structure of a "focus session" document in MongoDB.
 
 const mongoose = require('mongoose');
