@@ -1,5 +1,4 @@
 
-// Purpose: Maps HTTP methods + URLs to controller functions.
 
 const express = require('express');
 const router = express.Router();
@@ -8,6 +7,6 @@ const { protect } = require('../middleware/authMiddleware');
 
 router.post('/register', registerUser);
 router.post('/login', loginUser);
-router.get('/me', protect, getMe); // protect runs first, then getMe
+router.get('/me', protect, getMe); 
 
 module.exports = router;

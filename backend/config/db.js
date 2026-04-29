@@ -8,11 +8,11 @@ const connectDB = async () => {
     const conn = await mongoose.connect(process.env.MONGO_URI);
     
     // Log success — helpful for debugging deployment issues
-    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     // If connection fails, log error and crash the app
     // (no point running a server without a database)
-    console.error(`❌ MongoDB connection error: ${error.message}`);
+    console.error(`MongoDB connection error: ${error.message}`);
     process.exit(1); // exit with failure code
   }
 };

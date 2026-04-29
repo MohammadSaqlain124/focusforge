@@ -1,23 +1,43 @@
 // src/components/DurationDisplay.jsx
-// Shows elapsed time. If plannedDuration is provided and exceeded,
-// the display turns amber and shows "X min over".
+// Shows elapsed *focus* time. Subtracts ALL break durations precisely.
+// If frozenAt is provided, freezes display at that timestamp.
+// If plannedDuration is provided and exceeded, the display turns amber.
 
 import { useState, useEffect } from 'react';
 
-function DurationDisplay({ startTime, plannedDuration }) {
+function DurationDisplay({ startTime, plannedDuration, frozenAt, breaks = [] }) {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
+    if (frozenAt) return; // no need to tick when frozen
+
     const interval = setInterval(() => {
       setNow(Date.now());
     }, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [frozenAt]);
 
-  // Calculate elapsed
+  // Wall-clock elapsed (or up to frozenAt)
+  const endRef = frozenAt ? new Date(frozenAt).getTime() : now;
   const start = new Date(startTime).getTime();
-  const elapsedMs = now - start;
-  const totalSeconds = Math.floor(elapsedMs / 1000);
+  const wallClockMs = Math.max(0, endRef - start);
+
+  // Sum precise break durations from the breaks array
+  // (millisecond precision, no rounding errors)
+  let totalBreakMs = 0;
+  for (const b of breaks) {
+    if (!b.startedAt) continue;
+    const breakStart = new Date(b.startedAt).getTime();
+    // Active break: count up to "now" (or frozenAt). Otherwise use endedAt.
+    const breakEnd = b.endedAt ? new Date(b.endedAt).getTime() : endRef;
+    if (breakEnd > breakStart) {
+      totalBreakMs += (breakEnd - breakStart);
+    }
+  }
+
+  // Honest focus time
+  const focusMs = Math.max(0, wallClockMs - totalBreakMs);
+  const totalSeconds = Math.floor(focusMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   const hours = Math.floor(minutes / 60);
@@ -30,11 +50,10 @@ function DurationDisplay({ startTime, plannedDuration }) {
     display = `${displayMinutes}m ${seconds}s`;
   }
 
-  // Determine over-time state
-  const isOverTime = plannedDuration && minutes >= plannedDuration;
+  // Over-time uses focus minutes
+  const isOverTime = !frozenAt && plannedDuration && minutes >= plannedDuration;
   const minutesOver = isOverTime ? minutes - plannedDuration : 0;
 
-  // Color: amber when over, default white when on-pace
   const color = isOverTime ? '#ffa94d' : 'inherit';
 
   return (

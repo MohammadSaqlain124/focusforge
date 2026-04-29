@@ -38,3 +38,17 @@ export const logBreak = async (sessionId) => {
   const res = await api.patch(`/sessions/${sessionId}/break`);
   return res.data.data;
 };
+
+// Start a timed break (pauses the session)
+export const startBreak = async (sessionId, plannedDuration) => {
+  const { data } = await api.post(`/sessions/${sessionId}/break/start`, {
+    plannedDuration,
+  });
+  return data.data; // unwrap { success, data } → just the session
+};
+
+// End the current break (resumes the session)
+export const endBreak = async (sessionId) => {
+  const { data } = await api.patch(`/sessions/${sessionId}/break/end`);
+  return data.data;
+};

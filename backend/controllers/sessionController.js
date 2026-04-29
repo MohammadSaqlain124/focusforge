@@ -1,20 +1,14 @@
-
-// Business logic for managing focus sessions.
-
 const Session = require('../models/Session');
 const { closeOverrunSessions } = require('../services/insightsEngine');
 
-// @desc    Start a new focus session
-// @route   POST /api/sessions/start
-// @access  Private (token required)
+
 const startSession = async (req, res) => {
   try {
     const { goal, plannedDuration, tags } = req.body;
 
-    // Auto-close any forgotten overrun sessions before starting a new one
+
     await closeOverrunSessions(req.user._id);
 
-    // === Step 1: Validate input ===
     if (!goal || !plannedDuration) {
       return res.status(400).json({
         success: false,
@@ -22,11 +16,8 @@ const startSession = async (req, res) => {
       });
     }
 
-    // === Step 2: Business rule — only one active session per user ===
-    // We query for any session this user has that's still active.
-    // If found, reject the request — they must end the existing one first.
     const existingActive = await Session.findOne({
-      userId: req.user._id,    // req.user is set by 'protect' middleware
+      userId: req.user._id,
       status: 'active',
     });
 
@@ -34,21 +25,19 @@ const startSession = async (req, res) => {
       return res.status(400).json({
         success: false,
         error: 'You already have an active session. End it before starting a new one.',
-        activeSessionId: existingActive._id, // helpful for frontend to redirect
+        activeSessionId: existingActive._id,
       });
     }
 
-    // === Step 3: Create the session ===
-    // Mongoose validates against the schema BEFORE writing to DB.
-    // If validation fails, the catch block handles it.
+
     const session = await Session.create({
       userId: req.user._id,
       goal,
       plannedDuration,
-      tags: tags || [], // default to empty array if not provided
+      tags: tags || [],
     });
 
-    // === Step 4: Return the new session ===
+
     res.status(201).json({ success: true, data: session });
 
   } catch (error) {
@@ -57,15 +46,12 @@ const startSession = async (req, res) => {
   }
 };
 
-// @desc    End an active session (mark as completed or abandoned)
-// @route   PATCH /api/sessions/:id/end
-// @access  Private
+
 const endSession = async (req, res) => {
   try {
     const { status } = req.body;
 
-    // === Step 1: Validate the new status ===
-    // Only two valid end-states: 'completed' or 'abandoned'
+
     if (!['completed', 'abandoned'].includes(status)) {
       return res.status(400).json({
         success: false,
@@ -73,8 +59,7 @@ const endSession = async (req, res) => {
       });
     }
 
-    // === Step 2: Find the session ===
-    // req.params.id comes from the URL: /api/sessions/THIS_ID/end
+
     const session = await Session.findById(req.params.id);
 
     if (!session) {
@@ -84,8 +69,7 @@ const endSession = async (req, res) => {
       });
     }
 
-    // === Step 3: AUTHORIZATION — does this session belong to the logged-in user? ===
-    // ObjectIds aren't plain strings — convert both sides before comparing
+
     if (session.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -93,7 +77,7 @@ const endSession = async (req, res) => {
       });
     }
 
-    // === Step 4: State check — only active sessions can be ended ===
+
     if (session.status !== 'active') {
       return res.status(400).json({
         success: false,
@@ -101,19 +85,34 @@ const endSession = async (req, res) => {
       });
     }
 
-    // === Step 5: Calculate actual duration in minutes ===
-    // Date subtraction returns milliseconds; divide by 60000 to get minutes
-    const endedAt = new Date();
-    const actualDurationMs = endedAt - session.startedAt;
-    const actualDurationMin = Math.round(actualDurationMs / 60000);
 
-    // === Step 6: Update and save ===
+    const endedAt = new Date();
+
+    // === Edge case: user ended session while on a break ===
+    // We must close that break first so its time gets counted in totalBreakMinutes.
+    if (session.isOnBreak) {
+    const activeBreak = session.breaks.find(b => b.endedAt === null);
+    if (activeBreak) {
+        const breakMs = endedAt - activeBreak.startedAt;
+        const breakMin = Math.max(1, Math.round(breakMs / 60000));
+        activeBreak.endedAt = endedAt;
+        activeBreak.actualDuration = breakMin;
+        session.totalBreakMinutes += breakMin;
+    }
+    session.isOnBreak = false;
+    }
+
+    // === Honest duration calculation ===
+    // Wall-clock elapsed minus all break time = actual focus time.
+    const wallClockMs = endedAt - session.startedAt;
+    const wallClockMin = Math.round(wallClockMs / 60000);
+    const actualDurationMin = Math.max(0, wallClockMin - session.totalBreakMinutes);
+
     session.endedAt = endedAt;
     session.actualDuration = actualDurationMin;
     session.status = status;
     await session.save();
 
-    // === Step 7: Return updated session ===
     res.json({ success: true, data: session });
 
   } catch (error) {
@@ -122,12 +121,10 @@ const endSession = async (req, res) => {
   }
 };
 
-// @desc    Log a break taken during an active session
-// @route   PATCH /api/sessions/:id/break
-// @access  Private
+
 const logBreak = async (req, res) => {
   try {
-    // === Step 1: Find the session ===
+
     const session = await Session.findById(req.params.id);
 
     if (!session) {
@@ -137,7 +134,6 @@ const logBreak = async (req, res) => {
       });
     }
 
-    // === Step 2: Authorization — owner only ===
     if (session.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -145,7 +141,6 @@ const logBreak = async (req, res) => {
       });
     }
 
-    // === Step 3: State check — only active sessions allow breaks ===
     if (session.status !== 'active') {
       return res.status(400).json({
         success: false,
@@ -153,9 +148,6 @@ const logBreak = async (req, res) => {
       });
     }
 
-    // === Step 4: Atomic increment using $inc ===
-    // findByIdAndUpdate with $inc is one atomic DB operation.
-    // { new: true } tells Mongoose to return the UPDATED doc, not the old one.
     const updated = await Session.findByIdAndUpdate(
       req.params.id,
       { $inc: { breaksTaken: 1 } },
@@ -170,20 +162,128 @@ const logBreak = async (req, res) => {
   }
 };
 
-// @desc    Get all sessions for the logged-in user (with filters + pagination)
-// @route   GET /api/sessions
-// @access  Private
+
+
+const startBreak = async (req, res) => {
+  try {
+    const { plannedDuration } = req.body;
+
+    
+    if (!plannedDuration) {
+      res.status(400);
+      throw new Error('plannedDuration is required (in minutes)');
+    }
+
+    if (typeof plannedDuration !== 'number' || plannedDuration < 1 || plannedDuration > 60) {
+      res.status(400);
+      throw new Error('plannedDuration must be a number between 1 and 60');
+    }
+
+
+    const session = await Session.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!session) {
+      res.status(404);
+      throw new Error('Session not found');
+    }
+
+    if (session.status !== 'active') {
+      res.status(400);
+      throw new Error('Cannot start a break on a non-active session');
+    }
+
+    if (session.isOnBreak) {
+      res.status(400);
+      throw new Error('You are already on a break. Resume the session first.');
+    }
+
+  
+    
+    session.breaks.push({
+    startedAt: new Date(),
+    plannedDuration,
+    });
+    session.isOnBreak = true;
+    session.breaksTaken = (session.breaksTaken || 0) + 1; // keep legacy counter in sync, defensive
+
+    await session.save();
+
+    res.status(201).json({
+      success: true,
+      data: session,
+    });
+  } catch (err) {
+    res.status(res.statusCode === 200 ? 500 : res.statusCode);
+    res.json({ success: false, message: err.message });
+  }
+};
+
+
+const endBreak = async (req, res) => {
+  try {
+  
+    const session = await Session.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!session) {
+      res.status(404);
+      throw new Error('Session not found');
+    }
+
+    if (session.status !== 'active') {
+      res.status(400);
+      throw new Error('Cannot end a break on a non-active session');
+    }
+
+    if (!session.isOnBreak) {
+      res.status(400);
+      throw new Error('You are not currently on a break');
+    }
+
+    const activeBreak = session.breaks.find(b => b.endedAt === null);
+
+    if (!activeBreak) {
+      
+      res.status(500);
+      throw new Error('Inconsistent state: isOnBreak is true but no active break found');
+    }
+
+    
+    const now = new Date();
+    const breakDurationMs = now - activeBreak.startedAt;
+    const breakDurationMin = Math.max(1, Math.round(breakDurationMs / 60000));
+   
+    activeBreak.endedAt = now;
+    activeBreak.actualDuration = breakDurationMin;
+    session.totalBreakMinutes += breakDurationMin;
+    session.isOnBreak = false;
+
+    await session.save();
+
+    res.json({
+      success: true,
+      data: session,
+    });
+  } catch (err) {
+    res.status(res.statusCode === 200 ? 500 : res.statusCode);
+    res.json({ success: false, message: err.message });
+  }
+};
+
 const getMySessions = async (req, res) => {
   try {
-    // Auto-close any overrun sessions so the list shows accurate state
+
     await closeOverrunSessions(req.user._id);
 
-    // Query params let frontend ask for filtered/paginated data
     const { status, limit = 20, page = 1 } = req.query;
     const limitNum = parseInt(limit);
     const pageNum = parseInt(page);
 
-    // === Step 2: Validate pagination params (don't trust user input) ===
     if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
       return res.status(400).json({
         success: false,
@@ -197,13 +297,9 @@ const getMySessions = async (req, res) => {
       });
     }
 
-    // === Step 3: Build the MongoDB filter ===
-    // Always scope to the logged-in user — never show one user's sessions to another!
     const filter = { userId: req.user._id };
 
-    // Optionally filter by status if provided
     if (status) {
-      // Validate against the same enum from our schema
       if (!['active', 'completed', 'abandoned'].includes(status)) {
         return res.status(400).json({
           success: false,
@@ -213,20 +309,15 @@ const getMySessions = async (req, res) => {
       filter.status = status;
     }
 
-    // === Step 4: Query DB with sort + pagination ===
-    // sort({ startedAt: -1 }) → newest first
-    // skip + limit → pagination
-    // The compound index we defined on the schema makes this fast
     const sessions = await Session.find(filter)
       .sort({ startedAt: -1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum);
 
-    // === Step 5: Get total count for pagination metadata ===
-    // countDocuments runs a separate query but is cheap on indexed fields
+
     const total = await Session.countDocuments(filter);
 
-    // === Step 6: Return data + pagination info ===
+
     res.json({
       success: true,
       data: sessions,
@@ -234,7 +325,7 @@ const getMySessions = async (req, res) => {
         total,
         page: pageNum,
         limit: limitNum,
-        pages: Math.ceil(total / limitNum), // total number of pages available
+        pages: Math.ceil(total / limitNum),
       },
     });
 
@@ -244,9 +335,7 @@ const getMySessions = async (req, res) => {
   }
 };
 
-// @desc    Get a single session by ID
-// @route   GET /api/sessions/:id
-// @access  Private
+
 const getSessionById = async (req, res) => {
   try {
     const session = await Session.findById(req.params.id);
@@ -258,7 +347,7 @@ const getSessionById = async (req, res) => {
       });
     }
 
-    // Authorization — owner only
+
     if (session.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -273,6 +362,13 @@ const getSessionById = async (req, res) => {
   }
 };
 
-module.exports = { startSession, endSession, logBreak, getMySessions, getSessionById, };
 
-
+module.exports = {
+  startSession,
+  endSession,
+  logBreak,
+  startBreak,
+  endBreak,
+  getMySessions,
+  getSessionById,
+};
