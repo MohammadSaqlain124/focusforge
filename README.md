@@ -280,6 +280,7 @@ Aggregations run database-side, returning only summarized results — far faster
 - Pomodoro timer mode
 - Export weekly reports as PDF
 - Mobile-first redesign
+- **Reliable break-end notifications** — current implementation works in some browsers/contexts but requires a Service Worker for full background reliability. Planned for v1.3.
 
 ---
 
